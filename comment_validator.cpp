@@ -7,24 +7,32 @@ int main() {
     cout << "Enter string: ";
     getline(cin, s);
     
-    int state = 0;
+    bool validComment = false;
     
-    for(int i = 0; i < s.length(); i++) {
-        if(state == 0) {
-            if(s[i] == '/' && i+1 < s.length() && s[i+1] == '*') {
-                state = 1;
-                i++; // Skip next character
+    // Check for /* */ comment
+    for(int i = 0; i < s.length() - 1; i++) {
+        if(s[i] == '/' && s[i+1] == '*') {
+            for(int j = i + 2; j < s.length() - 1; j++) {
+                if(s[j] == '*' && s[j+1] == '/') {
+                    validComment = true;
+                    break;
+                }
             }
+            break;
         }
-        else if(state == 1) {
-            if(s[i] == '*' && i+1 < s.length() && s[i+1] == '/') {
-                state = 2;
-                i++; // Skip next character
+    }
+    
+    // Check for // comment
+    if(!validComment) {
+        for(int i = 0; i < s.length() - 1; i++) {
+            if(s[i] == '/' && s[i+1] == '/') {
+                validComment = true;
+                break;
             }
         }
     }
     
-    if(state == 2)
+    if(validComment)
         cout << "VALID COMMENT" << endl;
     else
         cout << "INVALID COMMENT" << endl;
