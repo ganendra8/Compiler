@@ -1,76 +1,92 @@
-#include <iostream>
-#include <map>
-#include <stack>
-#include <string>
-using namespace std;
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 int main() {
-    // Parsing table: M[non-terminal][terminal] = production
-    map<pair<char,char>, string> table;
-    
-    cout << "Enter parsing table entries (format: A a S->AB, end with 'done'):\n";
-    string input;
-    while(cin >> input && input != "done") {
-        char nt = input[0];    // non-terminal
-        char t = input[2];     // terminal
-        string prod = input.substr(4); // production
-        table[{nt, t}] = prod;
-    }
-    
-    cout << "Enter input string: ";
-    string str;
-    cin >> str;
-    str += '$';  // Add end marker
-    
-    stack<char> stk;
-    stk.push('$');
-    stk.push('S');  // Start symbol
-    
-    int i = 0;
-    cout << "\nParsing steps:\n";
-    
-    while(!stk.empty() && i < str.length()) {
-        char top = stk.top();
-        char curr = str[i];
-        
-        cout << "Stack: ";
-        stack<char> temp = stk;
-        string stackStr = "";
-        while(!temp.empty()) {
-            stackStr = temp.top() + stackStr;
-            temp.pop();
+    char s[20], stack[20];
+
+    // LL(1) Parsing table
+    char m[5][6][4] = {
+        {"tb", " ", " ", "tb", " ", " "},
+        {" ", "+tb", " ", " ", "n", "n"},
+        {"fc", " ", " ", "fc", " ", " "},
+        {" ", "n", "*fc", " ", "n", "n"},
+        {"i", " ", " ", "(e)", " ", " "}
+    };
+
+    int size[5][6] = {
+        {2, 0, 0, 2, 0, 0},
+        {0, 3, 0, 0, 1, 1},
+        {2, 0, 0, 2, 0, 0},
+        {0, 1, 3, 0, 1, 1},
+        {1, 0, 0, 3, 0, 0}
+    };
+
+    int i, j, k, n;
+    int str1, str2;
+
+    printf("\nEnter the input string: ");
+    scanf("%s", s);
+    strcat(s, "$");  // end marker
+    n = strlen(s);
+
+    stack[0] = '$';
+    stack[1] = 'e';
+    i = 1;
+    j = 0;
+
+    printf("\nStack\tInput\n");
+    printf("__________________\n");
+
+    while ((stack[i] != '$') && (s[j] != '$')) {
+        if (stack[i] == s[j]) {
+            i--;
+            j++;
         }
-        cout << stackStr << ", Input: " << str.substr(i) << endl;
-        
-        // Match terminal
-        if(top == curr) {
-            stk.pop();
-            i++;
+
+        // Map stack top to row in parsing table
+        switch (stack[i]) {
+            case 'e': str1 = 0; break;
+            case 'b': str1 = 1; break;
+            case 't': str1 = 2; break;
+            case 'c': str1 = 3; break;
+            case 'f': str1 = 4; break;
         }
-        // Apply production
-        else if(top >= 'A' && top <= 'Z') {
-            if(table.find({top, curr}) != table.end()) {
-                stk.pop();
-                string prod = table[{top, curr}];
-                
-                // Push production in reverse
-                for(int j = prod.length() - 1; j >= 0; j--) {
-                    if(prod[j] != 'e') stk.push(prod[j]);
-                }
-                
-                cout << "Apply: " << top << " -> " << prod << endl;
-            } else {
-                cout << "ERROR: No entry in table\n";
-                break;
+
+        // Map input symbol to column in parsing table
+        switch (s[j]) {
+            case 'i': str2 = 0; break;
+            case '+': str2 = 1; break;
+            case '*': str2 = 2; break;
+            case '(': str2 = 3; break;
+            case ')': str2 = 4; break;
+            case '$': str2 = 5; break;
+        }
+
+        if (m[str1][str2][0] == '\0') {
+            printf("\nERROR: Invalid input\n");
+            exit(0);
+        } else if (m[str1][str2][0] == 'n') {
+            i--;  // epsilon production
+        } else if (m[str1][str2][0] == 'i') {
+            stack[i] = 'i';
+        } else {
+            for (k = size[str1][str2] - 1; k >= 0; k--) {
+                stack[i] = m[str1][str2][k];
+                i++;
             }
+            i--;
         }
+
+        // Print stack and remaining input
+        for (k = 0; k <= i; k++)
+            printf("%c", stack[k]);
+        printf("\t");
+        for (k = j; k <= n; k++)
+            printf("%c", s[k]);
+        printf("\n");
     }
-    
-    if(stk.top() == '$' && str[i-1] == '$') {
-        cout << "ACCEPTED\n";
-    } else {
-        cout << "REJECTED\n";
-    }
-    
+
+    printf("\nSUCCESS: Valid input string\n");
     return 0;
 }
