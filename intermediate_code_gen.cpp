@@ -1,76 +1,85 @@
 #include <iostream>
 #include <string>
+#include <stack>
 #include <vector>
+#include <cctype>
 using namespace std;
 
 int tempCount = 1;
+string newTemp() { return "t" + to_string(tempCount++); }
 
-string newTemp() {
-    return "t" + to_string(tempCount++);
+struct Op { string left, right, res, oper; };
+
+int precedence(char op) {
+    return (op == '*' || op == '/') ? 2 :
+           (op == '+' || op == '-') ? 1 : 0;
 }
 
-string generateCode(string expr) {
-    vector<string> code;
-    string result = expr;
+vector<Op> generateIntermediate(const string& expr) {
+    stack<char> ops;
+    stack<string> vals;
+    vector<Op> code;
     
-    // Handle expressions with operators
-    for(int i = 0; i < result.length(); i++) {
-        if(result[i] == '+' || result[i] == '-' || 
-           result[i] == '*' || result[i] == '/') {
-            
-            string left = "";
-            string right = "";
-            char op = result[i];
-            
-            // Get left operand
-            int j = i - 1;
-            while(j >= 0 && result[j] != ' ') {
-                left = result[j] + left;
-                j--;
+    for (size_t i = 0; i < expr.size(); ++i) {
+        if (isspace(expr[i])) continue;
+        if (isalnum(expr[i])) {
+            string var = "";
+            while (i < expr.size() && isalnum(expr[i])) var += expr[i++];
+            --i;
+            vals.push(var);
+        } else if (expr[i] == '(') ops.push('(');
+        else if (expr[i] == ')') {
+            while (!ops.empty() && ops.top() != '(') {
+                string right = vals.top(); vals.pop();
+                string left = vals.top(); vals.pop();
+                string temp = newTemp();
+                code.push_back({left, right, temp, string(1, ops.top())});
+                vals.push(temp);
+                ops.pop();
             }
-            
-            // Get right operand  
-            j = i + 1;
-            while(j < result.length() && result[j] != ' ') {
-                right += result[j];
-                j++;
+            ops.pop(); // pop '('
+        } else { // operator
+            while (!ops.empty() && precedence(ops.top()) >= precedence(expr[i])) {
+                string right = vals.top(); vals.pop();
+                string left = vals.top(); vals.pop();
+                string temp = newTemp();
+                code.push_back({left, right, temp, string(1, ops.top())});
+                vals.push(temp);
+                ops.pop();
             }
-            
-            string temp = newTemp();
-            code.push_back(temp + " = " + left + " " + op + " " + right);
-            
-            // Replace expression with temp
-            string oldExpr = left + op + right;
-            size_t pos = result.find(oldExpr);
-            if(pos != string::npos) {
-                result.replace(pos, oldExpr.length(), temp);
-            }
-            i = 0; // Restart scan
+            ops.push(expr[i]);
         }
     }
-    
-    // Print generated code
-    for(string line : code) {
-        cout << line << endl;
+
+    while (!ops.empty()) {
+        string right = vals.top(); vals.pop();
+        string left = vals.top(); vals.pop();
+        string temp = newTemp();
+        code.push_back({left, right, temp, string(1, ops.top())});
+        vals.push(temp);
+        ops.pop();
     }
-    
-    return result;
+
+    return code;
 }
 
 int main() {
     string expr;
     cout << "Enter expression: ";
     getline(cin, expr);
-    
-    cout << "\nIntermediate Code:\n";
-    string result = generateCode(expr);
-    
-    // Handle assignment if present
+
+    // Split assignment
     size_t pos = expr.find('=');
-    if(pos != string::npos) {
-        string var = expr.substr(0, pos);
-        cout << var << "= " << result.substr(pos + 1) << endl;
-    }
-    
+    string lhs = expr.substr(0, pos);
+    string rhs = expr.substr(pos + 1);
+
+    vector<Op> code = generateIntermediate(rhs);
+
+    cout << "\nIntermediate Code:\n";
+    for (auto &c : code)
+        cout << c.res << " := " << c.left << c.oper << c.right << endl;
+
+    cout << lhs << " := " << (code.empty() ? rhs : code.back().res) << endl;
+
     return 0;
 }
